@@ -30,6 +30,7 @@ export const COLLECTIONS = {
   CUSTOMERS: 'customers',
   DUCK_MORTALITY: 'duckMortality',
   DUCK_INVENTORY: 'duckInventory',
+  DUCK_COHORT_MOVES: 'duckCohortMoves',
   FARM: 'farm',
 } as const;
 

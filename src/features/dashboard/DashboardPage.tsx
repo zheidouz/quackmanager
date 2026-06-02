@@ -1,17 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useEggCollection } from '../../hooks/useEggCollection';
 import { useAlerts } from '../../hooks/useAlerts';
-import { useDuckInventory } from '../../hooks/useDuckInventory';
+import { useDuckInventory, useCohortMoves } from '../../hooks/useDuckInventory';
 import db from '../../db/database';
 import { calculateProfit } from '../../lib/calculations';
-
+import type { DuckAgeGroup } from '../../types/models';
 import AlertBanner from '../../components/ui/AlertBanner';
+import MoveDucksSheet from './MoveDucksSheet';
 
 export default function DashboardPage() {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const { todayEntry } = useEggCollection();
   const { alerts, dismissAlert } = useAlerts();
-  const { totalLive, ducklings, growers, adults } = useDuckInventory();
+  const { totalLive, ducklings, growers, adults, recalculate } = useDuckInventory();
+  const { addMove } = useCohortMoves();
+  const [showMoveSheet, setShowMoveSheet] = useState(false);
+
+  const handleMoveDucks = useCallback(async (fromGroup: DuckAgeGroup, toGroup: DuckAgeGroup, quantity: number) => {
+    await addMove({
+      date: new Date().toISOString().split('T')[0],
+      fromGroup,
+      toGroup,
+      quantity,
+    });
+    await recalculate();
+  }, [addMove, recalculate]);
 
   const [todaySales, setTodaySales] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
@@ -73,9 +86,19 @@ export default function DashboardPage() {
 
       {/* Duck Inventory Card */}
       <div className="card mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="material-symbols-outlined text-xl text-primary">pets</span>
-          <span className="text-sm font-medium text-gray-700">Duck Inventory</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-xl text-primary">pets</span>
+            <span className="text-sm font-medium text-gray-700">Duck Inventory</span>
+          </div>
+          <button
+            onClick={() => setShowMoveSheet(true)}
+            className="text-sm text-primary font-medium flex items-center gap-1 min-h-touch px-3"
+            aria-label="Move ducks between age groups"
+          >
+            <span className="material-symbols-outlined text-lg">swap_horiz</span>
+            Move
+          </button>
         </div>
         <p className="text-3xl font-bold text-gray-900 mb-3">{totalLive}</p>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -93,6 +116,16 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Move Ducks Sheet */}
+      <MoveDucksSheet
+        open={showMoveSheet}
+        ducklings={ducklings}
+        growers={growers}
+        adults={adults}
+        onMove={handleMoveDucks}
+        onClose={() => setShowMoveSheet(false)}
+      />
 
       {/* Quick Actions */}
       <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Actions</h3>

@@ -169,7 +169,8 @@ export function calculateDuckInventory(
   hatches: { date: string; quantity: number }[],
   sales: { date: string; quantity: number }[],
   mortality: { date: string; quantity: number; ageGroup?: DuckAgeGroup }[],
-  referenceDate: string
+  referenceDate: string,
+  cohortMoves: { fromGroup: DuckAgeGroup; toGroup: DuckAgeGroup; quantity: number }[] = []
 ): { totalLive: number; ducklings: number; growers: number; adults: number } {
   // Total ducks ever hatched
   const totalHatched = hatches.reduce((sum, h) => sum + h.quantity, 0);
@@ -180,9 +181,7 @@ export function calculateDuckInventory(
 
   const totalLive = Math.max(0, totalHatched - totalSold - totalDied);
 
-  // Age group breakdown: for simplicity, allocate proportional to hatches
-  // since we don't track individual ducks. Distribute live ducks based on
-  // the proportion of hatches that fall into each age group.
+  // Age group breakdown: allocate proportional to hatches by hatch date classification
   let ducklings = 0;
   let growers = 0;
   let adults = 0;
@@ -203,12 +202,54 @@ export function calculateDuckInventory(
   // Adjust rounding to match totalLive exactly
   const sum = ducklings + growers + adults;
   if (sum !== totalLive && totalHatched > 0) {
-    // Add/subtract difference from the largest group
     const maxGroup = Math.max(ducklings, growers, adults);
     if (maxGroup === ducklings) ducklings += totalLive - sum;
     else if (maxGroup === growers) growers += totalLive - sum;
     else adults += totalLive - sum;
   }
 
-  return { totalLive, ducklings: Math.max(0, ducklings), growers: Math.max(0, growers), adults: Math.max(0, adults) };
+  // Apply cohort moves (manual age-group transfers)
+  const breakdown = applyCohortMoves(
+    { ducklings: Math.max(0, ducklings), growers: Math.max(0, growers), adults: Math.max(0, adults) },
+    cohortMoves
+  );
+
+  return { totalLive, ...breakdown };
+}
+
+/**
+ * Apply cohort moves to adjust an age-group breakdown.
+ * Moves are applied in order: subtract qty from fromGroup, add qty to toGroup.
+ * Total live count remains unchanged — only the distribution shifts.
+ */
+/**
+ * Map DuckAgeGroup values to the plural keys used in the breakdown object.
+ */
+const AGE_GROUP_KEY: Record<DuckAgeGroup, 'ducklings' | 'growers' | 'adults'> = {
+  duckling: 'ducklings',
+  grower: 'growers',
+  adult: 'adults',
+};
+
+export function applyCohortMoves(
+  breakdown: { ducklings: number; growers: number; adults: number },
+  moves: { fromGroup: DuckAgeGroup; toGroup: DuckAgeGroup; quantity: number }[]
+): { ducklings: number; growers: number; adults: number } {
+  const result = { ...breakdown };
+
+  for (const move of moves) {
+    if (move.fromGroup === move.toGroup || move.quantity <= 0) continue;
+
+    const fromKey = AGE_GROUP_KEY[move.fromGroup];
+    const toKey = AGE_GROUP_KEY[move.toGroup];
+
+    // Clamp quantity to available ducks in source group
+    const available = result[fromKey];
+    const actualQty = Math.min(move.quantity, available);
+
+    result[fromKey] = Math.max(0, result[fromKey] - actualQty);
+    result[toKey] = result[toKey] + actualQty;
+  }
+
+  return result;
 }

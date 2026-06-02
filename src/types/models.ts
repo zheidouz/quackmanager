@@ -207,3 +207,13 @@ export const DUCK_AGE_GROUP_LABELS: Record<DuckAgeGroup, string> = {
   grower: 'Growers (2-8 wks)',
   adult: 'Adults (8+ wks)',
 };
+
+export interface DuckCohortMove {
+  id?: string;
+  date: string;
+  fromGroup: DuckAgeGroup;
+  toGroup: DuckAgeGroup;
+  quantity: number;
+  notes?: string;
+  createdAt: string;
+}

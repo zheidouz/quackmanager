@@ -3,6 +3,7 @@ import type {
   EggCollection, EggSale, IncubationBatch, DucklingHatch, DuckSale,
   FeedPurchase, FeedUsageLog, FeedStock, Expense, RecurringExpenseTemplate,
   DailyLog, Customer, FarmSettings, DuckMortality, DuckInventorySnapshot,
+  DuckCohortMove,
 } from '../types/models';
 import { DB_NAME, DB_VERSION } from '../lib/constants';
 
@@ -22,6 +23,7 @@ const db = new Dexie(DB_NAME) as Dexie & {
   farmSettings: EntityTable<FarmSettings, 'id'>;
   duckMortality: EntityTable<DuckMortality, 'id'>;
   duckInventory: EntityTable<DuckInventorySnapshot, 'id'>;
+  duckCohortMoves: EntityTable<DuckCohortMove, 'id'>;
 };
 
 db.version(DB_VERSION).stores({
@@ -40,6 +42,7 @@ db.version(DB_VERSION).stores({
   farmSettings: 'id',
   duckMortality: '++id, date, cause, createdAt, syncedAt',
   duckInventory: 'id, date',
+  duckCohortMoves: '++id, date, fromGroup, toGroup, createdAt',
 });
 
 export default db;

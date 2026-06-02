@@ -165,6 +165,7 @@ const TABLE_TO_COLLECTION_MAP: Record<string, CollectionName> = {
   dailyLogs: COLLECTIONS.DAILY_LOGS,
   customers: COLLECTIONS.CUSTOMERS,
   duckMortality: COLLECTIONS.DUCK_MORTALITY,
+  duckCohortMoves: COLLECTIONS.DUCK_COHORT_MOVES,
 };
 
 /**

@@ -13,6 +13,7 @@ import {
   formatCurrency,
   classifyDuckAgeGroup,
   calculateDuckInventory,
+  applyCohortMoves,
 } from '../calculations';
 
 // ── calculateProfit ──────────────────────────────────────────────────
@@ -377,5 +378,101 @@ describe('calculateProfit edge cases', () => {
   it('handles floating point precision', () => {
     // 0.1 + 0.2 = 0.30000000000000004 in floating point
     expect(calculateProfit(0.1, 0.2, 0, 0)).toBeCloseTo(0.3);
+  });
+});
+
+// ── applyCohortMoves ────────────────────────────────────────────────
+describe('applyCohortMoves', () => {
+  it('moves ducks from ducklings to growers', () => {
+    const result = applyCohortMoves({ ducklings: 50, growers: 30, adults: 20 }, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 20 },
+    ]);
+    expect(result.ducklings).toBe(30);
+    expect(result.growers).toBe(50);
+    expect(result.adults).toBe(20);
+  });
+
+  it('moves ducks from growers to adults', () => {
+    const result = applyCohortMoves({ ducklings: 0, growers: 40, adults: 10 }, [
+      { fromGroup: 'grower', toGroup: 'adult', quantity: 15 },
+    ]);
+    expect(result.growers).toBe(25);
+    expect(result.adults).toBe(25);
+  });
+
+  it('clamps quantity to available ducks in source group', () => {
+    const result = applyCohortMoves({ ducklings: 10, growers: 0, adults: 0 }, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 100 },
+    ]);
+    expect(result.ducklings).toBe(0);
+    expect(result.growers).toBe(10);
+    expect(result.adults).toBe(0);
+  });
+
+  it('does nothing when fromGroup equals toGroup', () => {
+    const result = applyCohortMoves({ ducklings: 50, growers: 0, adults: 0 }, [
+      { fromGroup: 'duckling', toGroup: 'duckling', quantity: 20 },
+    ]);
+    expect(result.ducklings).toBe(50);
+  });
+
+  it('does nothing when quantity is zero', () => {
+    const result = applyCohortMoves({ ducklings: 50, growers: 30, adults: 20 }, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 0 },
+    ]);
+    expect(result).toEqual({ ducklings: 50, growers: 30, adults: 20 });
+  });
+
+  it('applies multiple sequential moves correctly', () => {
+    const result = applyCohortMoves({ ducklings: 80, growers: 0, adults: 0 }, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 50 },
+      { fromGroup: 'grower', toGroup: 'adult', quantity: 20 },
+    ]);
+    expect(result.ducklings).toBe(30);
+    expect(result.growers).toBe(30);
+    expect(result.adults).toBe(20);
+  });
+
+  it('handles empty moves array', () => {
+    const result = applyCohortMoves({ ducklings: 50, growers: 30, adults: 20 }, []);
+    expect(result).toEqual({ ducklings: 50, growers: 30, adults: 20 });
+  });
+
+  it('never produces negative counts', () => {
+    const result = applyCohortMoves({ ducklings: 0, growers: 5, adults: 0 }, [
+      { fromGroup: 'grower', toGroup: 'adult', quantity: 10 },
+    ]);
+    expect(result.ducklings).toBe(0);
+    expect(result.growers).toBe(0);
+    expect(result.adults).toBe(5);
+  });
+});
+
+// ── calculateDuckInventory with cohort moves ─────────────────────────
+describe('calculateDuckInventory with cohort moves', () => {
+  const refDate = '2026-06-02';
+
+  it('applies moves after proportional allocation', () => {
+    const hatches = [{ date: '2026-06-01', quantity: 100 }]; // all ducklings
+    const result = calculateDuckInventory(hatches, [], [], refDate, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 40 },
+    ]);
+    expect(result.totalLive).toBe(100);
+    expect(result.ducklings).toBe(60);
+    expect(result.growers).toBe(40);
+  });
+
+  it('total live remains unchanged after moves', () => {
+    const hatches = [
+      { date: '2026-01-15', quantity: 30 }, // adult
+      { date: '2026-05-01', quantity: 40 }, // grower
+      { date: '2026-06-01', quantity: 30 }, // duckling
+    ];
+    const result = calculateDuckInventory(hatches, [], [], refDate, [
+      { fromGroup: 'duckling', toGroup: 'grower', quantity: 20 },
+      { fromGroup: 'grower', toGroup: 'adult', quantity: 10 },
+    ]);
+    expect(result.totalLive).toBe(100);
+    expect(result.ducklings + result.growers + result.adults).toBe(100);
   });
 });

@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import db from '../db/database';
 import { useSyncStore } from '../sync/syncStore';
 import { calculateDuckInventory } from '../lib/calculations';
-import type { DuckMortality, DuckInventorySnapshot } from '../types/models';
+import type { DuckMortality, DuckInventorySnapshot, DuckCohortMove } from '../types/models';
 
 export function useDuckMortality() {
   const [records, setRecords] = useState<DuckMortality[]>([]);
@@ -69,12 +69,47 @@ export function useDuckInventorySnapshot() {
   return { snapshot, isLoading, saveSnapshot };
 }
 
+// ── Cohort Moves ────────────────────────────────────────────────────
+
+export function useCohortMoves() {
+  const [moves, setMoves] = useState<DuckCohortMove[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const incrementPending = useSyncStore((s) => s.incrementPending);
+
+  useEffect(() => {
+    const sub = liveQuery(() =>
+      db.duckCohortMoves.orderBy('createdAt').toArray()
+    ).subscribe({
+      next: (data) => { setMoves(data); setIsLoading(false); },
+      error: () => setIsLoading(false),
+    });
+    return () => sub.unsubscribe();
+  }, []);
+
+  const addMove = useCallback(async (data: Omit<DuckCohortMove, 'id' | 'createdAt'>): Promise<string> => {
+    if (data.quantity <= 0) throw new Error('Move quantity must be greater than 0');
+    if (data.fromGroup === data.toGroup) throw new Error('Source and target groups must be different');
+    const now = new Date().toISOString();
+    const id = await db.duckCohortMoves.add({ ...data, createdAt: now } as DuckCohortMove);
+    incrementPending();
+    return String(id);
+  }, [incrementPending]);
+
+  const deleteMove = useCallback(async (id: string) => {
+    await db.duckCohortMoves.delete(id);
+    incrementPending();
+  }, [incrementPending]);
+
+  return { moves, isLoading, addMove, deleteMove };
+}
+
 /**
  * Hook that computes duck inventory from raw data.
- * Call `recalculate()` after any hatch, sale, or mortality change.
+ * Call `recalculate()` after any hatch, sale, mortality, or cohort move change.
  */
 export function useDuckInventory() {
   const { records: mortalityRecords } = useDuckMortality();
+  const { moves: cohortMoves } = useCohortMoves();
   const { snapshot, saveSnapshot } = useDuckInventorySnapshot();
   const [inventory, setInventory] = useState<{ totalLive: number; ducklings: number; growers: number; adults: number } | null>(null);
   const [computing, setComputing] = useState(false);
@@ -83,13 +118,14 @@ export function useDuckInventory() {
     setComputing(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const [hatches, sales, mortality] = await Promise.all([
+      const [hatches, sales, mortality, moves] = await Promise.all([
         db.ducklingHatches.toArray(),
         db.duckSales.toArray(),
         db.duckMortality.toArray(),
+        db.duckCohortMoves.orderBy('createdAt').toArray(),
       ]);
 
-      const result = calculateDuckInventory(hatches, sales, mortality, today);
+      const result = calculateDuckInventory(hatches, sales, mortality, today, moves);
       setInventory(result);
 
       await saveSnapshot({
@@ -108,10 +144,10 @@ export function useDuckInventory() {
     }
   }, [saveSnapshot]);
 
-  // Recalculate when mortality records change
+  // Recalculate when mortality records or cohort moves change
   useEffect(() => {
     recalculate();
-  }, [mortalityRecords, recalculate]);
+  }, [mortalityRecords, cohortMoves, recalculate]);
 
   return {
     inventory,
