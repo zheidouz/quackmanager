@@ -140,3 +140,75 @@ export function formatCurrency(amount: number): string {
     maximumFractionDigits: 2,
   }).format(amount);
 }
+
+// ── Duck Inventory Calculations ──────────────────────────────────────
+
+import type { DuckAgeGroup } from '../types/models';
+
+/**
+ * Classify a duck's age group based on hatch date and current date.
+ */
+export function classifyDuckAgeGroup(
+  hatchDate: string,
+  referenceDate: string
+): DuckAgeGroup {
+  const hatch = new Date(hatchDate + 'T00:00:00');
+  const ref = new Date(referenceDate + 'T00:00:00');
+  const ageDays = Math.floor((ref.getTime() - hatch.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (ageDays < 14) return 'duckling';
+  if (ageDays < 56) return 'grower';
+  return 'adult';
+}
+
+/**
+ * Calculate current duck inventory from hatches, sales, and mortality records.
+ * Returns total live ducks plus breakdown by age group.
+ */
+export function calculateDuckInventory(
+  hatches: { date: string; quantity: number }[],
+  sales: { date: string; quantity: number }[],
+  mortality: { date: string; quantity: number; ageGroup?: DuckAgeGroup }[],
+  referenceDate: string
+): { totalLive: number; ducklings: number; growers: number; adults: number } {
+  // Total ducks ever hatched
+  const totalHatched = hatches.reduce((sum, h) => sum + h.quantity, 0);
+
+  // Total ducks removed (sold + died)
+  const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+  const totalDied = mortality.reduce((sum, m) => sum + m.quantity, 0);
+
+  const totalLive = Math.max(0, totalHatched - totalSold - totalDied);
+
+  // Age group breakdown: for simplicity, allocate proportional to hatches
+  // since we don't track individual ducks. Distribute live ducks based on
+  // the proportion of hatches that fall into each age group.
+  let ducklings = 0;
+  let growers = 0;
+  let adults = 0;
+
+  for (const hatch of hatches) {
+    const group = classifyDuckAgeGroup(hatch.date, referenceDate);
+    if (group === 'duckling') ducklings += hatch.quantity;
+    else if (group === 'grower') growers += hatch.quantity;
+    else adults += hatch.quantity;
+  }
+
+  // Scale by survival rate (live / total hatched)
+  const survivalRate = totalHatched > 0 ? totalLive / totalHatched : 0;
+  ducklings = Math.round(ducklings * survivalRate);
+  growers = Math.round(growers * survivalRate);
+  adults = Math.round(adults * survivalRate);
+
+  // Adjust rounding to match totalLive exactly
+  const sum = ducklings + growers + adults;
+  if (sum !== totalLive && totalHatched > 0) {
+    // Add/subtract difference from the largest group
+    const maxGroup = Math.max(ducklings, growers, adults);
+    if (maxGroup === ducklings) ducklings += totalLive - sum;
+    else if (maxGroup === growers) growers += totalLive - sum;
+    else adults += totalLive - sum;
+  }
+
+  return { totalLive, ducklings: Math.max(0, ducklings), growers: Math.max(0, growers), adults: Math.max(0, adults) };
+}

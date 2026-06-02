@@ -164,6 +164,7 @@ const TABLE_TO_COLLECTION_MAP: Record<string, CollectionName> = {
   recurringExpenseTemplates: COLLECTIONS.RECURRING_EXPENSE_TEMPLATES,
   dailyLogs: COLLECTIONS.DAILY_LOGS,
   customers: COLLECTIONS.CUSTOMERS,
+  duckMortality: COLLECTIONS.DUCK_MORTALITY,
 };
 
 /**

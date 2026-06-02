@@ -165,3 +165,45 @@ export const RECURRING_FREQUENCIES: { value: RecurringFrequency; label: string }
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
 ];
+
+// ── Duck Tracking ─────────────────────────────────────────────────────
+
+export type DuckAgeGroup = 'duckling' | 'grower' | 'adult';
+
+export type MortalityCause = 'disease' | 'injury' | 'predator' | 'old_age' | 'unknown';
+
+export interface DuckMortality {
+  id?: string;
+  date: string;
+  quantity: number;
+  cause: MortalityCause;
+  ageGroup?: DuckAgeGroup;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  syncedAt?: string;
+}
+
+export interface DuckInventorySnapshot {
+  id?: string;
+  date: string;
+  totalLive: number;
+  ducklings: number;
+  growers: number;
+  adults: number;
+  lastCalculatedAt: string;
+}
+
+export const MORTALITY_CAUSES: { value: MortalityCause; label: string; icon: string }[] = [
+  { value: 'disease', label: 'Disease', icon: 'sick' },
+  { value: 'injury', label: 'Injury', icon: 'bandage' },
+  { value: 'predator', label: 'Predator', icon: 'pets' },
+  { value: 'old_age', label: 'Old Age', icon: 'cruelty_free' },
+  { value: 'unknown', label: 'Unknown', icon: 'help' },
+];
+
+export const DUCK_AGE_GROUP_LABELS: Record<DuckAgeGroup, string> = {
+  duckling: 'Ducklings (0-2 wks)',
+  grower: 'Growers (2-8 wks)',
+  adult: 'Adults (8+ wks)',
+};

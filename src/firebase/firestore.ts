@@ -28,6 +28,8 @@ export const COLLECTIONS = {
   RECURRING_EXPENSE_TEMPLATES: 'recurringExpenseTemplates',
   DAILY_LOGS: 'dailyLogs',
   CUSTOMERS: 'customers',
+  DUCK_MORTALITY: 'duckMortality',
+  DUCK_INVENTORY: 'duckInventory',
   FARM: 'farm',
 } as const;
 

@@ -2,13 +2,15 @@ import { useSearchParams } from 'react-router-dom';
 import EggCollectionForm from './EggCollectionForm';
 import IncubationTab from './IncubationTab';
 import DucklingTab from './DucklingTab';
+import MortalityTab from './MortalityTab';
 
-type ProductionTab = 'eggs' | 'incubation' | 'ducklings';
+type ProductionTab = 'eggs' | 'incubation' | 'ducklings' | 'mortality';
 
 const tabs: { id: ProductionTab; label: string; icon: string }[] = [
   { id: 'eggs', label: 'Egg Collection', icon: 'egg' },
   { id: 'incubation', label: 'Incubation', icon: 'heat' },
   { id: 'ducklings', label: 'Ducklings', icon: 'pets' },
+  { id: 'mortality', label: 'Mortality', icon: 'cruelty_free' },
 ];
 
 export default function ProductionPage() {
@@ -47,6 +49,7 @@ export default function ProductionPage() {
       {activeTab === 'eggs' && <EggCollectionForm />}
       {activeTab === 'incubation' && <IncubationTab />}
       {activeTab === 'ducklings' && <DucklingTab />}
+      {activeTab === 'mortality' && <MortalityTab />}
     </div>
   );
 }

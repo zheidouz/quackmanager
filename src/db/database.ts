@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import type {
   EggCollection, EggSale, IncubationBatch, DucklingHatch, DuckSale,
   FeedPurchase, FeedUsageLog, FeedStock, Expense, RecurringExpenseTemplate,
-  DailyLog, Customer, FarmSettings,
+  DailyLog, Customer, FarmSettings, DuckMortality, DuckInventorySnapshot,
 } from '../types/models';
 import { DB_NAME, DB_VERSION } from '../lib/constants';
 
@@ -20,6 +20,8 @@ const db = new Dexie(DB_NAME) as Dexie & {
   dailyLogs: EntityTable<DailyLog, 'id'>;
   customers: EntityTable<Customer, 'id'>;
   farmSettings: EntityTable<FarmSettings, 'id'>;
+  duckMortality: EntityTable<DuckMortality, 'id'>;
+  duckInventory: EntityTable<DuckInventorySnapshot, 'id'>;
 };
 
 db.version(DB_VERSION).stores({
@@ -36,6 +38,8 @@ db.version(DB_VERSION).stores({
   dailyLogs: 'id, date',
   customers: '++id, name, phone, createdAt',
   farmSettings: 'id',
+  duckMortality: '++id, date, cause, createdAt, syncedAt',
+  duckInventory: 'id, date',
 });
 
 export default db;

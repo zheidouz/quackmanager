@@ -11,6 +11,8 @@ import {
   getTotalByCategory,
   shouldGenerateRecurringExpense,
   formatCurrency,
+  classifyDuckAgeGroup,
+  calculateDuckInventory,
 } from '../calculations';
 
 // ── calculateProfit ──────────────────────────────────────────────────
@@ -230,5 +232,150 @@ describe('formatCurrency', () => {
 
   it('formats zero', () => {
     expect(formatCurrency(0)).toBe('0');
+  });
+});
+
+// ── classifyDuckAgeGroup ─────────────────────────────────────────────
+describe('classifyDuckAgeGroup', () => {
+  it('returns duckling for age under 14 days', () => {
+    expect(classifyDuckAgeGroup('2026-06-01', '2026-06-02')).toBe('duckling');
+  });
+
+  it('returns duckling at exactly 13 days', () => {
+    expect(classifyDuckAgeGroup('2026-05-20', '2026-06-02')).toBe('duckling');
+  });
+
+  it('returns grower for age between 14 and 55 days', () => {
+    expect(classifyDuckAgeGroup('2026-05-01', '2026-06-02')).toBe('grower');
+  });
+
+  it('returns grower at exactly 14 days', () => {
+    expect(classifyDuckAgeGroup('2026-05-19', '2026-06-02')).toBe('grower');
+  });
+
+  it('returns adult for age 56+ days', () => {
+    expect(classifyDuckAgeGroup('2026-01-01', '2026-06-02')).toBe('adult');
+  });
+
+  it('returns adult at exactly 56 days', () => {
+    expect(classifyDuckAgeGroup('2026-04-07', '2026-06-02')).toBe('adult');
+  });
+
+  it('handles same day hatch and reference', () => {
+    expect(classifyDuckAgeGroup('2026-06-02', '2026-06-02')).toBe('duckling');
+  });
+});
+
+// ── calculateDuckInventory ───────────────────────────────────────────
+describe('calculateDuckInventory', () => {
+  const refDate = '2026-06-02';
+
+  it('returns zero when no data exists', () => {
+    const result = calculateDuckInventory([], [], [], refDate);
+    expect(result.totalLive).toBe(0);
+    expect(result.ducklings).toBe(0);
+    expect(result.growers).toBe(0);
+    expect(result.adults).toBe(0);
+  });
+
+  it('computes live count as hatches minus sales and mortality', () => {
+    const hatches = [{ date: '2026-05-01', quantity: 100 }];
+    const sales = [{ date: '2026-05-15', quantity: 20 }];
+    const mortality = [{ date: '2026-05-20', quantity: 10 }];
+    const result = calculateDuckInventory(hatches, sales, mortality, refDate);
+    expect(result.totalLive).toBe(70);
+  });
+
+  it('returns zero when all ducks are sold or died', () => {
+    const hatches = [{ date: '2026-05-01', quantity: 50 }];
+    const sales = [{ date: '2026-05-15', quantity: 30 }];
+    const mortality = [{ date: '2026-05-20', quantity: 20 }];
+    const result = calculateDuckInventory(hatches, sales, mortality, refDate);
+    expect(result.totalLive).toBe(0);
+  });
+
+  it('handles negative live count (more removed than hatched) gracefully', () => {
+    const hatches = [{ date: '2026-05-01', quantity: 10 }];
+    const sales = [{ date: '2026-05-15', quantity: 20 }];
+    const result = calculateDuckInventory(hatches, sales, [], refDate);
+    expect(result.totalLive).toBe(0);
+  });
+
+  it('classifies adults correctly for old hatches', () => {
+    const hatches = [
+      { date: '2026-01-01', quantity: 50 }, // adult (153 days)
+      { date: '2026-05-20', quantity: 30 }, // duckling (13 days)
+    ];
+    const result = calculateDuckInventory(hatches, [], [], refDate);
+    expect(result.totalLive).toBe(80);
+    expect(result.adults).toBeGreaterThan(0);
+    expect(result.ducklings).toBeGreaterThan(0);
+    expect(result.adults + result.ducklings + result.growers).toBe(80);
+  });
+
+  it('allocates all age groups summing to totalLive', () => {
+    const hatches = [
+      { date: '2026-01-15', quantity: 40 }, // adult
+      { date: '2026-05-01', quantity: 35 }, // grower
+      { date: '2026-05-28', quantity: 25 }, // duckling
+    ];
+    const result = calculateDuckInventory(hatches, [], [], refDate);
+    expect(result.totalLive).toBe(100);
+    expect(result.adults + result.growers + result.ducklings).toBe(100);
+  });
+
+  it('handles hatches with mortality that exceeds total survivors per age group', () => {
+    const hatches = [
+      { date: '2026-05-01', quantity: 10 }, // grower
+      { date: '2026-05-28', quantity: 90 }, // duckling
+    ];
+    const sales = [{ date: '2026-06-01', quantity: 80 }];
+    const result = calculateDuckInventory(hatches, sales, [], refDate);
+    expect(result.totalLive).toBe(20);
+    // Survival rate = 20/100 = 0.2; growers ~2, ducklings ~18
+    expect(result.adults + result.growers + result.ducklings).toBe(20);
+  });
+
+  it('handles zero hatches with sales and mortality', () => {
+    const result = calculateDuckInventory([], [{ date: '2026-06-01', quantity: 5 }], [{ date: '2026-06-01', quantity: 3 }], refDate);
+    expect(result.totalLive).toBe(0);
+  });
+
+  it('handles single duckling hatch same day', () => {
+    const hatches = [{ date: refDate, quantity: 1 }];
+    const result = calculateDuckInventory(hatches, [], [], refDate);
+    expect(result.totalLive).toBe(1);
+    expect(result.ducklings).toBe(1);
+  });
+});
+
+// ── Edge-case: isFeedStockLow with zero consumption ──────────────────
+describe('isFeedStockLow edge cases', () => {
+  it('returns false when daily consumption is 0 regardless of stock', () => {
+    expect(isFeedStockLow(0, 0, 3)).toBe(false);
+    expect(isFeedStockLow(100, 0, 3)).toBe(false);
+    expect(isFeedStockLow(1, 0, 3)).toBe(false);
+  });
+});
+
+// ── Edge-case: shouldGenerateRecurringExpense ────────────────────────
+describe('shouldGenerateRecurringExpense edge cases', () => {
+  it('generates when lastGenerated is null regardless of frequency', () => {
+    expect(shouldGenerateRecurringExpense('daily', null, '2026-06-02')).toBe(true);
+    expect(shouldGenerateRecurringExpense('weekly', null, '2026-06-02')).toBe(true);
+    expect(shouldGenerateRecurringExpense('monthly', null, '2026-06-02')).toBe(true);
+  });
+});
+
+// ── Edge-case: calculateProfit ───────────────────────────────────────
+describe('calculateProfit edge cases', () => {
+  it('handles very large numbers without overflow', () => {
+    const result = calculateProfit(1_000_000_000, 500_000_000, 200_000_000, 100_000_000);
+    expect(result).toBe(1_200_000_000);
+  });
+
+  it('handles floating point precision', () => {
+    // 0.1 + 0.2 = 0.30000000000000004 in floating point
+    expect(calculateProfit(0.1, 0.2, 0, 0)).toBeCloseTo(0.3);
   });
 });

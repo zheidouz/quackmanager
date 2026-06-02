@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useEggCollection } from '../../hooks/useEggCollection';
 import { useAlerts } from '../../hooks/useAlerts';
+import { useDuckInventory } from '../../hooks/useDuckInventory';
 import db from '../../db/database';
 import { calculateProfit } from '../../lib/calculations';
+
 import AlertBanner from '../../components/ui/AlertBanner';
 
 export default function DashboardPage() {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const { todayEntry } = useEggCollection();
   const { alerts, dismissAlert } = useAlerts();
+  const { totalLive, ducklings, growers, adults } = useDuckInventory();
 
   const [todaySales, setTodaySales] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
@@ -66,6 +69,29 @@ export default function DashboardPage() {
         <SummaryCard icon="payments" label="Sales Today" value={loading ? '--' : todaySales.toLocaleString()} color="text-secondary" />
         <SummaryCard icon="receipt_long" label="Expenses" value={loading ? '--' : todayExpenses.toLocaleString()} color="text-danger" />
         <SummaryCard icon="trending_up" label="Profit" value={loading || todayProfit === null ? '--' : `${todayProfit >= 0 ? '+' : ''}${todayProfit.toLocaleString()}`} color={todayProfit !== null && todayProfit >= 0 ? 'text-secondary' : 'text-danger'} />
+      </div>
+
+      {/* Duck Inventory Card */}
+      <div className="card mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="material-symbols-outlined text-xl text-primary">pets</span>
+          <span className="text-sm font-medium text-gray-700">Duck Inventory</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900 mb-3">{totalLive}</p>
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="bg-accent-50 rounded-lg py-2">
+            <p className="font-semibold text-accent-800">{ducklings}</p>
+            <p className="text-accent-600">Ducklings</p>
+          </div>
+          <div className="bg-primary-50 rounded-lg py-2">
+            <p className="font-semibold text-primary-700">{growers}</p>
+            <p className="text-primary-600">Growers</p>
+          </div>
+          <div className="bg-secondary-50 rounded-lg py-2">
+            <p className="font-semibold text-secondary-700">{adults}</p>
+            <p className="text-secondary-600">Adults</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}

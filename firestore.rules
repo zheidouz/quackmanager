@@ -196,5 +196,31 @@ service cloud.firestore {
                    && request.resource.data.keys().hasAll(['name', 'phone', 'createdAt']);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // DUCK MORTALITY
+    // ═══════════════════════════════════════════════════════════════
+
+    match /duckMortality/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantity', 'cause', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.cause in ['disease', 'injury', 'predator', 'old_age', 'unknown'];
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DUCK INVENTORY SNAPSHOT (singleton)
+    // ═══════════════════════════════════════════════════════════════
+
+    match /duckInventory/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.data.keys().hasAll(['date', 'totalLive', 'lastCalculatedAt'])
+                   && request.resource.data.totalLive is number
+                   && request.resource.data.totalLive >= 0;
+    }
+
   }
 }
