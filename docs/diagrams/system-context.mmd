@@ -1,0 +1,22 @@
+```mermaid
+graph TD
+    subgraph "User Device (Phone)"
+        A[PWA Shell<br/>Service Worker] --> B[React SPA<br/>Hash Router]
+        B --> C[Zustand Stores<br/>UI State]
+        B --> D[Dexie.js<br/>IndexedDB]
+        D --> E[Sync Engine]
+    end
+
+    subgraph "Firebase Cloud"
+        F[Firebase Auth<br/>Google Sign-In]
+        G[Firestore<br/>Document DB]
+        H[Firebase Hosting<br/>CDN]
+        I[Firebase Crashlytics]
+    end
+
+    E -->|Online| G
+    F --> B
+    H -->|Serves static assets| A
+    B --> F
+    G -->|Security Rules| F
+```

@@ -1,0 +1,22 @@
+```mermaid
+sequenceDiagram
+    participant User as Farm Worker
+    participant UI as React Component
+    participant Dexie as IndexedDB (Dexie.js)
+    participant Sync as Sync Engine
+    participant Firestore as Firestore Cloud
+
+    User->>UI: Enter egg count (50 eggs)
+    UI->>Dexie: Save {date, quantity, createdAt}
+    Note over Dexie: Instant - works offline
+    UI-->>User: Saved confirmation
+
+    Note over Sync: When connectivity available
+
+    Sync->>Dexie: Read pending changes
+    Dexie-->>Sync: unsynced records
+    Sync->>Firestore: batchWrite(records)
+    Firestore-->>Sync: Acknowledged
+    Sync->>Dexie: Mark as synced
+    UI-->>User: Sync indicator turns green
+```

@@ -1,0 +1,200 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════════════════════════
+    // GLOBAL RULES
+    // ═══════════════════════════════════════════════════════════════
+
+    // Deny everything by default (Zero Trust: never trust, always verify)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FARM SETTINGS (singleton document)
+    // ═══════════════════════════════════════════════════════════════
+
+    match /farm/{farmId} {
+      // Only the authenticated farm owner can read/write settings
+      allow read, write: if request.auth != null
+                          && request.auth.uid == farmId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // EGG COLLECTIONS
+    // ═══════════════════════════════════════════════════════════════
+
+    match /eggCollections/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantity', 'createdAt'])
+                    && request.resource.data.date is string
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.quantity <= 9999;
+      allow update: if request.auth != null
+                    && resource.data.date == request.resource.data.date // cannot change date
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.quantity <= 9999;
+      allow delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // EGG SALES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /eggSales/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantity', 'pricePerEgg', 'total', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.pricePerEgg is number
+                    && request.resource.data.pricePerEgg >= 0
+                    && request.resource.data.total is number;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // INCUBATION BATCHES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /incubationBatches/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['datePlaced', 'quantity', 'expectedHatchDate', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DUCKLING HATCHES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /ducklingHatches/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantity', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DUCK SALES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /duckSales/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantity', 'priceEach', 'total', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.priceEach is number
+                    && request.resource.data.priceEach >= 0
+                    && request.resource.data.total is number;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEED PURCHASES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /feedPurchases/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'feedType', 'quantity', 'unit', 'costPerUnit', 'totalCost', 'createdAt'])
+                    && request.resource.data.quantity is number
+                    && request.resource.data.quantity >= 0
+                    && request.resource.data.costPerUnit is number
+                    && request.resource.data.costPerUnit >= 0
+                    && request.resource.data.totalCost is number
+                    && request.resource.data.unit in ['kg', 'bag'];
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEED USAGE LOGS
+    // ═══════════════════════════════════════════════════════════════
+
+    match /feedUsageLogs/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'quantityKg', 'createdAt'])
+                    && request.resource.data.quantityKg is number
+                    && request.resource.data.quantityKg >= 0;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEED STOCK (singleton)
+    // ═══════════════════════════════════════════════════════════════
+
+    match /feedStock/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.data.keys().hasAll(['currentStockKg', 'lastUpdated', 'dailyAvgConsumptionKg', 'lowStockThresholdKg'])
+                   && request.resource.data.currentStockKg is number
+                   && request.resource.data.currentStockKg >= 0
+                   && request.resource.data.dailyAvgConsumptionKg is number
+                   && request.resource.data.dailyAvgConsumptionKg >= 0
+                   && request.resource.data.lowStockThresholdKg is number
+                   && request.resource.data.lowStockThresholdKg >= 0;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // EXPENSES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /expenses/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['date', 'category', 'amount', 'description', 'createdAt'])
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount >= 0
+                    && request.resource.data.category in ['labor', 'medicine', 'transport', 'electricity', 'maintenance', 'other'];
+      allow update: if request.auth != null
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount >= 0;
+      allow delete: if request.auth != null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // RECURRING EXPENSE TEMPLATES
+    // ═══════════════════════════════════════════════════════════════
+
+    match /recurringExpenseTemplates/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.data.keys().hasAll(['category', 'amount', 'description', 'frequency', 'createdAt'])
+                   && request.resource.data.amount is number
+                   && request.resource.data.amount >= 0
+                   && request.resource.data.frequency in ['daily', 'weekly', 'monthly'];
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DAILY LOGS (aggregated — read-only from client perspective)
+    // ═══════════════════════════════════════════════════════════════
+
+    match /dailyLogs/{docId} {
+      allow read: if request.auth != null;
+      // Daily logs are aggregate views; writes should come from server-side triggers
+      allow write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CUSTOMERS (post-MVP)
+    // ═══════════════════════════════════════════════════════════════
+
+    match /customers/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.data.keys().hasAll(['name', 'phone', 'createdAt']);
+    }
+
+  }
+}

@@ -1,0 +1,25 @@
+```mermaid
+graph TD
+    subgraph "Firebase Hosting (CDN)"
+        H[Static Assets:<br/>index.html, JS, CSS, icons]
+    end
+
+    subgraph "Browser (PWA)"
+        SW[Service Worker<br/>Workbox Precache]
+        APP[React App Shell]
+        IDB[IndexedDB<br/>Dexie.js]
+    end
+
+    subgraph "Firebase Cloud Services"
+        AUTH[Firebase Auth]
+        FS[Firestore Database]
+        CL[Crashlytics]
+    end
+
+    H -->|Install| SW
+    SW -->|Cache-first| APP
+    APP -->|Read/Write| IDB
+    APP -->|Auth| AUTH
+    IDB -->|Sync| FS
+    APP -->|Error Reporting| CL
+```
