@@ -76,10 +76,12 @@ export async function deleteDocument(
 
 /**
  * Push multiple documents in a batch (atomic write).
+ * entry.id can be number (Dexie auto-increment) or string (fixed keys);
+ * it's converted to string for Firestore document references.
  */
 export async function pushBatch(
   collectionName: CollectionName,
-  entries: { id: string; data: DocumentData }[]
+  entries: { id: unknown; data: DocumentData }[]
 ): Promise<void> {
   if (entries.length === 0) return;
 
@@ -87,7 +89,8 @@ export async function pushBatch(
   const now = new Date().toISOString();
 
   for (const entry of entries) {
-    const ref = getDocRef(collectionName, entry.id);
+    const docId = String(entry.id);
+    const ref = getDocRef(collectionName, docId);
     batch.set(ref, { ...entry.data, syncedAt: now });
   }
 

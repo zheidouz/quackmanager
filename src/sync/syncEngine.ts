@@ -30,22 +30,26 @@ export type SyncStatus = 'synced' | 'pending' | 'error' | 'offline';
 /**
  * Map Dexie table names to Firestore collection names.
  * Returns entries that have `syncedAt === undefined` (not yet synced).
+ * Preserves original ID types (number for auto-increment, string for fixed keys)
+ * to ensure Dexie queries match correctly.
  */
-async function getUnsyncedEntries(tableName: string): Promise<{ id: string; data: Record<string, unknown> }[]> {
+async function getUnsyncedEntries(tableName: string): Promise<{ id: string | number; data: Record<string, unknown> }[]> {
   const table = db.table(tableName);
   const all = await table.toArray();
   return all
     .filter((entry: Record<string, unknown>) => !entry.syncedAt)
     .map((entry: Record<string, unknown>) => ({
-      id: String(entry.id),
+      id: entry.id as string | number,  // Keep original type (number for ++id, string for fixed keys)
       data: { ...entry },
     }));
 }
 
 /**
  * Mark entries as synced in Dexie after successful push.
+ * Uses original ID types (numbers for auto-increment keys) so Dexie/IndexedDB
+ * type-strict queries match correctly.
  */
-async function markSynced(tableName: string, ids: string[]): Promise<void> {
+async function markSynced(tableName: string, ids: (string | number)[]): Promise<void> {
   if (ids.length === 0) return;
   const table = db.table(tableName);
   const now = new Date().toISOString();
@@ -77,7 +81,7 @@ export async function runSync(direction: SyncDirection = 'both'): Promise<SyncRe
     if (direction === 'push' || direction === 'both') {
       // Collect all unsynced entries first, then push+mark in batch
       // to avoid partial state if one collection fails
-      const allResults: { tableName: string; ids: string[] }[] = [];
+      const allResults: { tableName: string; ids: (string | number)[] }[] = [];
 
       for (const [tableName, collectionName] of Object.entries(TABLE_TO_COLLECTION_MAP)) {
         try {
