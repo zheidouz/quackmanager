@@ -59,8 +59,8 @@ export default function EggSalesTab() {
           <div className="flex gap-3">
             <div className="flex-1">
               <label htmlFor="egg-sale-qty" className="text-xs font-medium text-gray-500">Quantity</label>
-              <input id="egg-sale-qty" type="number" inputMode="numeric" min={0} value={form.quantity || ''}
-                onChange={(e) => setForm({ ...form, quantity: Math.max(0, Number(e.target.value)) })} className="input-field text-sm" />
+              <input id="egg-sale-qty" type="number" inputMode="numeric" min={0} step={1} value={form.quantity || ''}
+                onChange={(e) => setForm({ ...form, quantity: Math.max(0, Math.floor(Number(e.target.value)) || 0) })} className="input-field text-sm" />
             </div>
             <div className="flex-1">
               <label htmlFor="egg-sale-price" className="text-xs font-medium text-gray-500">Price/Egg</label>

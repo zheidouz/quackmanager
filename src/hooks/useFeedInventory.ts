@@ -54,10 +54,14 @@ export function useFeedInventory() {
   }, []);
 
   const addUsageLog = useCallback(async (data: Omit<FeedUsageLog, 'id' | 'createdAt' | 'updatedAt' | 'syncedAt'>): Promise<string> => {
+    if (data.quantityKg <= 0) throw new Error('Feed usage must be greater than 0');
     const now = new Date().toISOString();
+    const current = await db.feedStock.get('main');
+    if (current && data.quantityKg > current.currentStockKg) {
+      throw new Error(`Insufficient stock: ${current.currentStockKg} kg available, ${data.quantityKg} kg requested`);
+    }
     const id = await db.feedUsageLogs.add({ ...data, createdAt: now, updatedAt: now } as FeedUsageLog);
     // Decrease stock
-    const current = await db.feedStock.get('main');
     if (current) {
       const newStock = Math.max(0, current.currentStockKg - data.quantityKg);
       await db.feedStock.update('main', { currentStockKg: newStock, lastUpdated: now });

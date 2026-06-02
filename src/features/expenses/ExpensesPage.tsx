@@ -40,12 +40,13 @@ export default function ExpensesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (form.amount <= 0 || !form.description.trim()) return;
+    const trimmedDesc = form.description.trim();
+    if (form.amount <= 0 || !trimmedDesc) return;
     await addExpense({
       date: form.date,
       category: form.category,
       amount: form.amount,
-      description: form.description.trim(),
+      description: trimmedDesc,
       isRecurring: form.isRecurring,
       recurringFrequency: form.isRecurring ? form.recurringFrequency : undefined,
     });

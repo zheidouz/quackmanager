@@ -20,6 +20,10 @@ export function useIncubationBatches() {
   }, []);
 
   const addBatch = useCallback(async (data: Omit<IncubationBatch, 'id' | 'createdAt' | 'updatedAt' | 'syncedAt'>): Promise<string> => {
+    if (data.quantity <= 0) throw new Error('Batch quantity must be greater than 0');
+    if (data.expectedHatchDate <= data.datePlaced) {
+      throw new Error('Expected hatch date must be after the date placed');
+    }
     const now = new Date().toISOString();
     const id = await db.incubationBatches.add({ ...data, createdAt: now, updatedAt: now } as IncubationBatch);
     incrementPending();
@@ -50,6 +54,11 @@ export function useDucklingHatches() {
   }, []);
 
   const addHatch = useCallback(async (data: Omit<DucklingHatch, 'id' | 'createdAt' | 'updatedAt' | 'syncedAt'>): Promise<string> => {
+    if (data.quantity <= 0) throw new Error('Hatch quantity must be greater than 0');
+    if (data.incubationBatchId) {
+      const batchExists = await db.incubationBatches.get(data.incubationBatchId);
+      if (!batchExists) throw new Error('Referenced incubation batch not found');
+    }
     const now = new Date().toISOString();
     const id = await db.ducklingHatches.add({ ...data, createdAt: now, updatedAt: now } as DucklingHatch);
     incrementPending();
