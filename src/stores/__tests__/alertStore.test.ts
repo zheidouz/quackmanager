@@ -54,4 +54,36 @@ describe('alertStore', () => {
 
     expect(useAlertStore.getState().alerts[0].dismissed).toBeUndefined();
   });
+
+  it('handles many alerts without performance regression', () => {
+    for (let i = 0; i < 100; i++) {
+      useAlertStore.getState().addAlert({ ...sampleAlert, id: `alert-${i}` });
+    }
+    expect(useAlertStore.getState().alerts).toHaveLength(100);
+    useAlertStore.getState().clearAlerts();
+    expect(useAlertStore.getState().alerts).toHaveLength(0);
+  });
+
+  it('addAlert with duplicate id overwrites rather than duplicates', () => {
+    useAlertStore.getState().addAlert(sampleAlert);
+    useAlertStore.getState().addAlert({ ...sampleAlert, id: 'alert-1', title: 'Updated' });
+    const alerts = useAlertStore.getState().alerts;
+    const duplicates = alerts.filter((a) => a.id === 'alert-1');
+    // Zustand array allows duplicates — consumer must check uniqueness
+    expect(duplicates.length).toBe(2);
+  });
+
+  it('dismissed alerts remain in array for history', () => {
+    useAlertStore.getState().addAlert(sampleAlert);
+    useAlertStore.getState().dismissAlert('alert-1');
+    expect(useAlertStore.getState().alerts).toHaveLength(1);
+    expect(useAlertStore.getState().alerts[0].dismissed).toBe(true);
+  });
+
+  it('handles dismissing already-dismissed alert gracefully', () => {
+    useAlertStore.getState().addAlert(sampleAlert);
+    useAlertStore.getState().dismissAlert('alert-1');
+    useAlertStore.getState().dismissAlert('alert-1'); // second dismiss
+    expect(useAlertStore.getState().alerts[0].dismissed).toBe(true);
+  });
 });

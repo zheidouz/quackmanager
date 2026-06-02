@@ -65,4 +65,25 @@ describe('syncStore', () => {
     // Restore original
     useSyncStore.getState().sync = originalSync;
   });
+
+  it('handles offline state correctly', () => {
+    useSyncStore.getState().setOnline(false);
+    expect(useSyncStore.getState().isOnline).toBe(false);
+
+    useSyncStore.getState().setOnline(true);
+    expect(useSyncStore.getState().isOnline).toBe(true);
+  });
+
+  it('incrementPending increases count from any starting value', () => {
+    useSyncStore.getState().setPendingCount(100);
+    useSyncStore.getState().incrementPending();
+    expect(useSyncStore.getState().pendingCount).toBe(101);
+  });
+
+  it('setLastSynced stores date regardless of format', () => {
+    useSyncStore.getState().setLastSynced('invalid-date');
+    expect(useSyncStore.getState().lastSynced).toBe('invalid-date');
+    useSyncStore.getState().setLastSynced('');
+    expect(useSyncStore.getState().lastSynced).toBe('');
+  });
 });
