@@ -17,7 +17,11 @@ interface AlertState {
 
 export const useAlertStore = create<AlertState>()((set) => ({
   alerts: [],
-  addAlert: (alert) => set((state) => ({ alerts: [...state.alerts, alert] })),
+  addAlert: (alert) => set((state) => {
+    // Keep max 100 alerts to prevent unbounded memory growth
+    const updated = [...state.alerts, alert];
+    return { alerts: updated.slice(-100) };
+  }),
   dismissAlert: (id) =>
     set((state) => ({
       alerts: state.alerts.map((a) => (a.id === id ? { ...a, dismissed: true } : a)),

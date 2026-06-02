@@ -75,16 +75,30 @@ export async function runSync(direction: SyncDirection = 'both'): Promise<SyncRe
   try {
     // ── PUSH: Local → Firestore ──────────────────────────────
     if (direction === 'push' || direction === 'both') {
+      // Collect all unsynced entries first, then push+mark in batch
+      // to avoid partial state if one collection fails
+      const allResults: { tableName: string; ids: string[] }[] = [];
+
       for (const [tableName, collectionName] of Object.entries(TABLE_TO_COLLECTION_MAP)) {
         try {
           const unsynced = await getUnsyncedEntries(tableName);
           if (unsynced.length === 0) continue;
 
           await pushBatch(collectionName, unsynced);
-          await markSynced(tableName, unsynced.map((e) => e.id));
+          allResults.push({ tableName, ids: unsynced.map((e) => e.id) });
           result.pushed += unsynced.length;
         } catch (err) {
           const msg = `Push failed for ${tableName}: ${err instanceof Error ? err.message : String(err)}`;
+          result.errors.push(msg);
+        }
+      }
+
+      // Only mark synced after ALL pushes succeeded for a table
+      for (const { tableName, ids } of allResults) {
+        try {
+          await markSynced(tableName, ids);
+        } catch (err) {
+          const msg = `Failed to mark synced for ${tableName}: ${err instanceof Error ? err.message : String(err)}`;
           result.errors.push(msg);
         }
       }

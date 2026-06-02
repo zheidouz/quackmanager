@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useDuckMortality } from '../../hooks/useDuckInventory';
-import { useDucklingHatches } from '../../hooks/useProduction';
 import { MORTALITY_CAUSES, DUCK_AGE_GROUP_LABELS, type MortalityCause, type DuckAgeGroup } from '../../types/models';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -23,30 +22,29 @@ const defaultForm: FormData = {
 
 export default function MortalityTab() {
   const { records, isLoading, addRecord, deleteRecord } = useDuckMortality();
-  const { hatches } = useDucklingHatches();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormData>(defaultForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const totalMortality = records.reduce((s, r) => s + r.quantity, 0);
 
   const handleSubmit = async () => {
-    if (form.quantity <= 0) return;
-    const totalHatched = hatches.reduce((s, h) => s + h.quantity, 0);
-    const totalSold = 0; // simplified - we don't track by date here
-    // Reject if mortality exceeds plausible live count
-    if (form.quantity > Math.max(1, totalHatched - totalSold)) {
-      return;
+    if (form.quantity <= 0) { setSubmitError('Quantity must be greater than 0'); return; }
+    setSubmitError(null);
+    try {
+      await addRecord({
+        date: form.date,
+        quantity: form.quantity,
+        cause: form.cause,
+        ageGroup: form.ageGroup || undefined,
+        notes: form.notes.trim() || undefined,
+      });
+      setForm(defaultForm);
+      setShowForm(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save record');
     }
-    await addRecord({
-      date: form.date,
-      quantity: form.quantity,
-      cause: form.cause,
-      ageGroup: form.ageGroup || undefined,
-      notes: form.notes.trim() || undefined,
-    });
-    setForm(defaultForm);
-    setShowForm(false);
   };
 
   const getCauseInfo = (cause: MortalityCause) =>
@@ -105,6 +103,11 @@ export default function MortalityTab() {
             <label htmlFor="mort-notes" className="text-xs font-medium text-gray-500">Notes <span className="text-gray-400">(optional)</span></label>
             <input id="mort-notes" type="text" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field text-sm" maxLength={200} placeholder="e.g., Cold snap last night" />
           </div>
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={() => setShowForm(false)} className="btn-secondary flex-1 text-sm">Cancel</button>
             <button onClick={handleSubmit} disabled={form.quantity <= 0} className="btn-primary flex-1 text-sm">Save Record</button>

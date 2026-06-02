@@ -161,7 +161,7 @@ export default function ExpensesPage() {
             </div>
           )}
           <div className="flex gap-2">
-            <button onClick={() => setShowForm(false)} className="btn-secondary flex-1 text-sm">Cancel</button>
+            <button onClick={() => { setForm(defaultForm); setShowForm(false); }} className="btn-secondary flex-1 text-sm">Cancel</button>
             <button onClick={handleSubmit} disabled={form.amount <= 0 || !form.description.trim()} className="btn-primary flex-1 text-sm">Save Expense</button>
           </div>
         </div>

@@ -8,6 +8,7 @@ export default function FeedInventoryTab() {
   const [showUsageForm, setShowUsageForm] = useState(false);
   const [usageKg, setUsageKg] = useState(0);
   const [usageNotes, setUsageNotes] = useState('');
+  const [usageError, setUsageError] = useState<string | null>(null);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
   const [pForm, setPForm] = useState({ date: new Date().toISOString().split('T')[0], feedType: '', quantity: 0, unit: 'kg' as 'kg' | 'bag', costPerUnit: 0 });
 
@@ -15,17 +16,25 @@ export default function FeedInventoryTab() {
 
   const handleUsageSubmit = async () => {
     if (usageKg <= 0) return;
-    await addUsageLog({ date: new Date().toISOString().split('T')[0], quantityKg: usageKg, notes: usageNotes.trim() || undefined });
-    setUsageKg(0);
-    setUsageNotes('');
-    setShowUsageForm(false);
+    try {
+      await addUsageLog({ date: new Date().toISOString().split('T')[0], quantityKg: usageKg, notes: usageNotes.trim() || undefined });
+      setUsageKg(0);
+      setUsageNotes('');
+      setShowUsageForm(false);
+    } catch (err) {
+      setUsageError(err instanceof Error ? err.message : 'Failed to log usage');
+    }
   };
 
   const handlePurchaseSubmit = async () => {
     if (pForm.quantity <= 0 || pForm.costPerUnit <= 0 || !pForm.feedType) return;
-    await addPurchase(pForm);
-    setPForm({ date: new Date().toISOString().split('T')[0], feedType: '', quantity: 0, unit: 'kg', costPerUnit: 0 });
-    setShowPurchaseForm(false);
+    try {
+      await addPurchase(pForm);
+      setPForm({ date: new Date().toISOString().split('T')[0], feedType: '', quantity: 0, unit: 'kg', costPerUnit: 0 });
+      setShowPurchaseForm(false);
+    } catch (err) {
+      setUsageError(err instanceof Error ? err.message : 'Failed to record purchase');
+    }
   };
 
   if (stockLoading) {
@@ -58,6 +67,14 @@ export default function FeedInventoryTab() {
       </div>
 
       {/* Usage Form */}
+      {/* Error banner */}
+      {usageError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
+          <p className="text-sm text-red-700">{usageError}</p>
+          <button onClick={() => setUsageError(null)} className="text-xs text-red-500 mt-1 underline">Dismiss</button>
+        </div>
+      )}
+
       {showUsageForm && (
         <div className="card mb-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-900">Log Feed Usage</h3>

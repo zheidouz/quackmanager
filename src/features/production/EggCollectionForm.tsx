@@ -17,18 +17,20 @@ export default function EggCollectionForm() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Pre-fill if editing today's entry
+  // Pre-fill if editing today's entry (only on mount — don't overwrite user edits)
   useEffect(() => {
-    if (todayEntry) {
+    const hasUserInput = quantity > 0 || notes.length > 0;
+    if (todayEntry && !hasUserInput) {
       setDate(todayEntry.date);
       setQuantity(todayEntry.quantity);
       setNotes(todayEntry.notes ?? '');
-    } else {
+    } else if (!todayEntry && !hasUserInput) {
       setDate(todayDate);
       setQuantity(0);
       setNotes('');
     }
-  }, [todayEntry, todayDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const clearForm = useCallback(() => {
     setQuantity(0);
